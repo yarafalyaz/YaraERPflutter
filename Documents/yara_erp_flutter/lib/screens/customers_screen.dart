@@ -35,9 +35,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Pelanggan'),
+        title: const Text('Pelanggan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -54,7 +56,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
             : RefreshIndicator(
                 onRefresh: _loadCustomers,
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.only(
+                    top: kToolbarHeight + MediaQuery.of(context).padding.top + 20,
+                    bottom: 20,
+                    left: 16,
+                    right: 16,
+                  ),
                   itemCount: _customers.length,
                   itemBuilder: (context, index) {
                     final customer = _customers[index];

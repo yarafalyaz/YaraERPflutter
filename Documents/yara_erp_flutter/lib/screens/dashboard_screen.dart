@@ -11,6 +11,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _dashboardData;
+  Map<String, dynamic>? _metricsData;
   bool _isLoading = true;
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -55,9 +56,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Future<void> _loadDashboard() async {
     final auth = context.read<AuthProvider>();
     final data = await auth.getDashboardData();
+    final metrics = await auth.getDashboardMetrics();
+    
     if (mounted) {
       setState(() {
         _dashboardData = data;
+        _metricsData = metrics;
         _isLoading = false;
       });
       _fadeController.forward();
@@ -78,20 +82,28 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0A0A1A),
-            Color(0xFF1A1A2E),
-            Color(0xFF16213E),
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        automaticallyImplyLeading: false, // No back button on dashboard
       ),
-      child: SafeArea(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0A0A1A),
+              Color(0xFF1A1A2E),
+              Color(0xFF16213E),
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+        ),
         child: RefreshIndicator(
           onRefresh: () async {
             _fadeController.reset();
@@ -104,7 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 120, 20, 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -186,6 +198,13 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
                 // Stats with staggered animation
                 _buildAnimatedStats(),
+                const SizedBox(height: 28),
+
+                // Business Intelligence Section
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: _buildBISection(),
+                ),
                 const SizedBox(height: 28),
 
                 // Activity Header
@@ -459,7 +478,154 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
+  Widget _buildBISection() {
+    final finance = _metricsData?['finance'] ?? {};
+    final inventory = _metricsData?['inventory'] ?? {};
+    final hr = _metricsData?['hr'] ?? {};
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Business Intelligence',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildMetricCard(
+          title: 'Budget Utilization',
+          value: '${finance['budget_utilization'] ?? 0}%',
+          subtitle: 'Actual vs Budgeted',
+          icon: Icons.account_balance_outlined,
+          color: const Color(0xFF3B82F6),
+          progress: (finance['budget_utilization'] ?? 0) / 100.0,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Low Stock',
+                value: '${inventory['low_stock_count'] ?? 0}',
+                subtitle: 'Items to reorder',
+                icon: Icons.inventory_2_outlined,
+                color: const Color(0xFFEF4444),
+                compact: true,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Leave Sisa',
+                value: '${hr['leave_remaining'] ?? 0} Hari',
+                subtitle: 'Annual Quota',
+                icon: Icons.calendar_today_outlined,
+                color: const Color(0xFF10B981),
+                compact: true,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    double? progress,
+    bool compact = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(compact ? 16 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                    ),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (progress != null) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                backgroundColor: Colors.white.withOpacity(0.05),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+          ],
+          if (progress == null && !compact) ...[
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnimatedActivityList() {
+    // ... existed method remains unchanged but I must include it because I used EndLine: 572
+    // Wait, I can just end before it if I use multi_replace correctly.
+
     final activities = _dashboardData?['activities'] as List<dynamic>? ?? [];
 
     if (activities.isEmpty) {

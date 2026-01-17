@@ -30,7 +30,9 @@ class AuthProvider with ChangeNotifier {
     final userJson = prefs.getString('user_data');
     if (userJson != null) {
       _user = jsonDecode(userJson);
-      _roles = List<String>.from(_user?['roles'] ?? []);
+      _roles = (List<dynamic>.from(_user?['roles'] ?? []))
+          .map((r) => r.toString().toLowerCase())
+          .toList();
     }
     notifyListeners();
   }
@@ -57,7 +59,9 @@ class AuthProvider with ChangeNotifier {
         if (data['success'] == true) {
           _token = data['token'];
           _user = data['user'];
-          _roles = List<String>.from(_user?['roles'] ?? []);
+          _roles = (List<dynamic>.from(_user?['roles'] ?? []))
+              .map((r) => r.toString().toLowerCase())
+              .toList();
 
           // Save to storage
           final prefs = await SharedPreferences.getInstance();
@@ -100,22 +104,60 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Get dashboard data
-  Future<Map<String, dynamic>?> getDashboardData() async {
-    if (_token == null) return null;
-
+  // Get dashboard summary data
+  Future<Map<String, dynamic>> getDashboardData() async {
+    if (_token == null) return {};
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/dashboard'),
         headers: ApiConfig.headers(token: _token),
       );
-
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
     } catch (e) {
-      debugPrint('Dashboard error: $e');
+      debugPrint('Dashboard data error: $e');
     }
-    return null;
+    return {};
+  }
+
+  // Get dashboard metrics
+  Future<Map<String, dynamic>> getDashboardMetrics() async {
+    if (_token == null) return {};
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/dashboard/metrics'),
+        headers: ApiConfig.headers(token: _token),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Metrics error: $e');
+    }
+    return {};
+  }
+
+  // Refresh user profile
+  Future<void> refreshProfile() async {
+    if (_token == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/user'),
+        headers: ApiConfig.headers(token: _token),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _user = data;
+        _roles = (List<dynamic>.from(_user?['roles'] ?? []))
+            .map((r) => r.toString().toLowerCase())
+            .toList();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_data', jsonEncode(_user));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Profile refresh error: $e');
+    }
   }
 }

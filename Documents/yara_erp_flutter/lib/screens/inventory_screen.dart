@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import './stock_adjustment_form_screen.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -12,15 +14,16 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<dynamic> _items = [];
-  List<dynamic> _warehouses = [];
+  List<dynamic> _adjustments = [];
+  List<dynamic> _racks = [];
+  List<dynamic> _vehicles = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _loadData();
+    _tabController = TabController(length: 3, vsync: this);
+    _loadAllData();
   }
 
   @override
@@ -29,47 +32,50 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadAllData() async {
+    setState(() => _isLoading = true);
     final auth = context.read<AuthProvider>();
     final api = ApiService(token: auth.token);
-    
-    final items = await api.getItems();
-    final warehouses = await api.getWarehouses();
-    
-    if (mounted) {
-      setState(() {
-        _items = items;
-        _warehouses = warehouses;
-        _isLoading = false;
-      });
-    }
-  }
 
-  String _formatCurrency(dynamic amount) {
-    if (amount == null) return 'Rp 0';
-    final value = amount is int ? amount : (amount as num).toInt();
-    return 'Rp ${value.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    )}';
+    try {
+      final results = await Future.wait([
+        api.getStockAdjustments(),
+        api.getRacks(),
+        api.getVehicles(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _adjustments = results[0];
+          _racks = results[1];
+          _vehicles = results[2];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Inventori'),
+        title: const Text('Inventory & Logistics', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF3B82F6),
-          labelColor: const Color(0xFF3B82F6),
-          unselectedLabelColor: Colors.white60,
+          indicatorColor: const Color(0xFFF59E0B),
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white.withOpacity(0.5),
           tabs: const [
-            Tab(text: 'Barang'),
-            Tab(text: 'Gudang'),
+            Tab(text: 'Adjustment'),
+            Tab(text: 'Racks'),
+            Tab(text: 'Vehicle'),
           ],
         ),
       ),
@@ -78,170 +84,196 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0F0C29), Color(0xFF1A1A2E)],
+            colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
           ),
         ),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFF59E0B)))
             : TabBarView(
                 controller: _tabController,
                 children: [
-                  // Items Tab
-                  RefreshIndicator(
-                    onRefresh: _loadData,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _items.length,
-                      itemBuilder: (context, index) {
-                        final item = _items[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withOpacity(0.08)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF06B6D4).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF06B6D4), size: 22),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item['name'] ?? '-',
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${item['category'] ?? '-'} • ${item['sku'] ?? '-'}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.white.withOpacity(0.6),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    _formatCurrency(item['price']),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF10B981),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Stok: ${item['stock'] ?? 0} ${item['unit'] ?? 'pcs'}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.white.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  
-                  // Warehouses Tab
-                  RefreshIndicator(
-                    onRefresh: _loadData,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _warehouses.length,
-                      itemBuilder: (context, index) {
-                        final warehouse = _warehouses[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withOpacity(0.08)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF84CC16).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.warehouse_outlined, color: Color(0xFF84CC16), size: 22),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      warehouse['name'] ?? '-',
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    if (warehouse['address'] != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text(
-                                          warehouse['address'],
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.white.withOpacity(0.6),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF3B82F6).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${warehouse['items_count'] ?? 0} item',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF3B82F6),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                  _buildAdjustmentList(),
+                  _buildRackList(),
+                  _buildVehicleList(),
                 ],
               ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          if (_tabController.index == 0) {
+            final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const StockAdjustmentFormScreen()));
+            if (result == true) _loadAllData();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hanya Master Admin yang bisa mengelola data Master')));
+          }
+        },
+        backgroundColor: const Color(0xFFF59E0B),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildAdjustmentList() {
+    if (_adjustments.isEmpty) return _buildEmptyState('Stock Adjustment');
+    return RefreshIndicator(
+      onRefresh: _loadAllData,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 120, 16, 80),
+        itemCount: _adjustments.length,
+        itemBuilder: (context, index) => _buildAdjustmentCard(_adjustments[index]),
+      ),
+    );
+  }
+
+  Widget _buildRackList() {
+    if (_racks.isEmpty) return _buildEmptyState('Racks');
+    return RefreshIndicator(
+      onRefresh: _loadAllData,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 120, 16, 80),
+        itemCount: _racks.length,
+        itemBuilder: (context, index) => _buildRackCard(_racks[index]),
+      ),
+    );
+  }
+
+  Widget _buildVehicleList() {
+    if (_vehicles.isEmpty) return _buildEmptyState('Vehicles');
+    return RefreshIndicator(
+      onRefresh: _loadAllData,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 120, 16, 80),
+        itemCount: _vehicles.length,
+        itemBuilder: (context, index) => _buildVehicleCard(_vehicles[index]),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String module) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.white.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          Text('Tidak ada data $module', style: TextStyle(color: Colors.white.withOpacity(0.4))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdjustmentCard(dynamic item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Icon(Icons.swap_horiz_outlined, color: Color(0xFFF59E0B), size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item['number'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(item['warehouse'] ?? '-', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+                const SizedBox(height: 4),
+                Text(item['user'] ?? '-', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11)),
+              ],
+            ),
+          ),
+          Text(item['date'] ?? '-', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRackCard(dynamic item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Icon(Icons.grid_view_outlined, color: Color(0xFF10B981), size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item['code'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(item['warehouse'] ?? '-', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('${item['rows_count']} Rows', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+              const Text('CAPACITY OK', style: TextStyle(color: Colors.white38, fontSize: 9)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleCard(dynamic item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Icon(Icons.car_rental_outlined, color: Color(0xFF3B82F6), size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${item['brand']} ${item['model']}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(item['customer'] ?? '-', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: Colors.white24),
+        ],
       ),
     );
   }

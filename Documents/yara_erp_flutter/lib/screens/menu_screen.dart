@@ -5,6 +5,14 @@ import 'attendance_screen.dart';
 import 'customers_screen.dart';
 import 'sales_screen.dart';
 import 'inventory_screen.dart';
+import 'leave_screen.dart';
+import 'expense_screen.dart';
+import 'payroll_screen.dart';
+import 'finance_screen.dart';
+import 'hr_portal_screen.dart';
+import 'operations_screen.dart';
+import 'projects_screen.dart';
+import 'admin_dashboard_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -34,69 +42,33 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0F0C29),
-            Color(0xFF302B63),
-            Color(0xFF24243E),
-          ],
-        ),
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Menu Utama', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
       ),
-      child: SafeArea(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0F0C29),
+              Color(0xFF302B63),
+              Color(0xFF24243E),
+            ],
+          ),
+        ),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 120, 24, 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF3B82F6).withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.apps_rounded, color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Menu Utama',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      Text(
-                        'Pilih modul aplikasi',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              // Animated Menu Grid
               const SizedBox(height: 32),
 
               // Animated Menu Grid
@@ -111,33 +83,63 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                     crossAxisSpacing: 20,
                     childAspectRatio: 0.85,
                     children: [
-                      _buildAnimatedMenuItem(0, Icons.group_rounded, 'Karyawan', 
+                      _buildAnimatedMenuItem(0, Icons.group_rounded, 'HR Portal', 
                         const [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                        const EmployeesScreen()),
-                      _buildAnimatedMenuItem(1, Icons.access_time_filled_rounded, 'Absensi',
+                        const HRPortalScreen()),
+                      
+                      // Tugas (previously Work Order/Operasi)
+                      _buildAnimatedMenuItem(1, Icons.assignment_rounded, 'Tugas',
                         const [Color(0xFF10B981), Color(0xFF059669)],
-                        const AttendanceScreen()),
-                      _buildAnimatedMenuItem(2, Icons.flight_takeoff_rounded, 'Cuti',
-                        const [Color(0xFFF59E0B), Color(0xFFD97706)],
-                        null),
-                      _buildAnimatedMenuItem(3, Icons.payments_rounded, 'Gaji',
+                        const OperationsScreen()),
+
+                      // Proyek (New)
+                      _buildAnimatedMenuItem(2, Icons.folder_shared_rounded, 'Proyek',
                         const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
-                        null),
-                      _buildAnimatedMenuItem(4, Icons.shopping_cart_rounded, 'Penjualan',
+                        const ProjectsScreen()),
+
+                      // Pelanggan (New)
+                      _buildAnimatedMenuItem(3, Icons.people_alt_rounded, 'Pelanggan',
                         const [Color(0xFFEC4899), Color(0xFFDB2777)],
-                        const SalesScreen()),
-                      _buildAnimatedMenuItem(5, Icons.inventory_2_rounded, 'Stok',
-                        const [Color(0xFF06B6D4), Color(0xFF0891B2)],
-                        const InventoryScreen()),
-                      _buildAnimatedMenuItem(6, Icons.contacts_rounded, 'Pelanggan',
-                        const [Color(0xFF6366F1), Color(0xFF4F46E5)],
                         const CustomersScreen()),
-                      _buildAnimatedMenuItem(7, Icons.wallet_rounded, 'Pengeluaran',
+
+                      // Penawaran (Deep link to Sales tab 0)
+                      _buildAnimatedMenuItem(4, Icons.description_rounded, 'Penawaran',
+                        const [Color(0xFFF59E0B), Color(0xFFD97706)],
+                        const SalesScreen(initialIndex: 0)),
+
+                      // Faktur (Invoice)
+                      _buildAnimatedMenuItem(5, Icons.receipt_long_rounded, 'Faktur',
+                        const [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                        const SalesScreen(initialIndex: 1)),
+
+                      // Penjualan (Generic)
+                      _buildAnimatedMenuItem(6, Icons.shopping_cart_rounded, 'Penjualan',
+                        const [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                        const SalesScreen()),
+
+                      _buildAnimatedMenuItem(7, Icons.access_time_filled_rounded, 'Absensi',
                         const [Color(0xFFEF4444), Color(0xFFDC2626)],
-                        null),
-                      _buildAnimatedMenuItem(8, Icons.warehouse_rounded, 'Gudang',
+                        const AttendanceScreen()),
+                        
+                      _buildAnimatedMenuItem(8, Icons.flight_takeoff_rounded, 'Cuti',
                         const [Color(0xFF84CC16), Color(0xFF65A30D)],
+                        const LeaveScreen()),
+
+                      _buildAnimatedMenuItem(9, Icons.payments_rounded, 'Gaji',
+                        const [Color(0xFF14B8A6), Color(0xFF0D9488)],
+                        const PayrollScreen()),
+                        
+                      _buildAnimatedMenuItem(10, Icons.inventory_2_rounded, 'Stok',
+                        const [Color(0xFF6366F1), Color(0xFF4F46E5)],
                         const InventoryScreen()),
+                        
+                      _buildAnimatedMenuItem(11, Icons.account_balance_rounded, 'Keuangan',
+                        const [Color(0xFFF43F5E), Color(0xFFE11D48)],
+                        const FinanceScreen()),
+                        
+                      _buildAnimatedMenuItem(12, Icons.admin_panel_settings_rounded, 'Admin',
+                        const [Color(0xFF64748B), Color(0xFF475569)],
+                        const AdminDashboardScreen()),
                     ],
                   );
                 },
